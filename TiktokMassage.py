@@ -27,6 +27,38 @@ class TikTokMessenger:
                 return None
             df = pd.read_excel(excel_path)
             print(f"成功加载 {len(df)} 条客户数据（文件：{excel_path}）")
+
+            # 自动规范列名：根据常见关键词重命名为中文标准列名
+            rename_map = {}
+            for col in df.columns:
+                lc = str(col).lower()
+                if any(k in lc for k in ['序号', 'index', 'no', '编号']):
+                    rename_map[col] = '序号'
+                elif any(k in lc for k in ['昵称', 'nick', 'name']):
+                    rename_map[col] = '昵称'
+                elif any(k in lc for k in ['用户名', 'username', 'user', 'uniqueid', 'uniqid']):
+                    rename_map[col] = '用户名'
+                elif any(k in lc for k in ['用户链接', 'profile', 'link', 'url']):
+                    rename_map[col] = '用户链接'
+                elif any(k in lc for k in ['爬取时间', 'time', 'crawl', 'date']):
+                    rename_map[col] = '爬取时间'
+
+            if rename_map:
+                df = df.rename(columns=rename_map)
+
+            # 如果没有 "用户链接" 列，但有 "用户名"，根据用户名构造用户链接
+            if '用户链接' not in df.columns and '用户名' in df.columns:
+                def make_link(u):
+                    if pd.isna(u):
+                        return ''
+                    s = str(u).strip()
+                    if not s:
+                        return ''
+                    if s.startswith('http'):
+                        return s
+                    return f"https://www.tiktok.com/@{s}"
+                df['用户链接'] = df['用户名'].apply(make_link)
+
             return df
         except Exception as e:
             print(f"加载Excel文件失败: {e}")
@@ -238,8 +270,8 @@ class TikTokMessenger:
             return
 
         # 截取指定范围的数据（注意：DataFrame索引从0开始）
-        df_selected = df.iloc[start_row-1:end_row]
-        
+        df_selected = df.iloc[start_row-1:end_row].reset_index(drop=True)
+
         success_count = 0
         fail_count = 0
 
@@ -247,27 +279,48 @@ class TikTokMessenger:
 
         for df_index, (index, row) in enumerate(df_selected.iterrows()):
             try:
-                # 根据您的Excel格式读取数据（按列位置）
-                # 支持中文列名或字母列名
-                sequence_no = row.iloc[0] if len(row) > 0 else index+1  # A列：序号
-                nickname = row.iloc[1] if len(row) > 1 else ''  # B列：昵称
-                username = row.iloc[2] if len(row) > 2 else ''  # C列：用户名
-                profile_url = row.iloc[3] if len(row) > 3 else ''  # D列：用户链接
-                crawl_time = row.iloc[4] if len(row) > 4 else ''  # E列：爬取时间
-                
+                # 支持按列名读取（优先）或按列位置回退
+                def safe_get(col_name, pos=None):
+                    if col_name in row.index:
+                        return row[col_name]
+                    if pos is not None and pos < len(row):
+                        return row.iloc[pos]
+                    return ''
+
+                sequence_no = safe_get('序号', 0) or (index + start_row)
+                nickname = safe_get('昵称', 1)
+                username = safe_get('用户名', 2)
+                profile_url = safe_get('用户链接', 3)
+                crawl_time = safe_get('爬取时间', 4)
+
+                # 处理 NaN 与类型
+                def to_str(v):
+                    return '' if pd.isna(v) else str(v).strip()
+
+                sequence_no = to_str(sequence_no) or (index + start_row)
+                nickname = to_str(nickname)
+                username = to_str(username)
+                profile_url = to_str(profile_url)
+                crawl_time = to_str(crawl_time)
+
+                # 如果没有有效的用户链接，尝试根据用户名构造
+                if (not profile_url or not str(profile_url).startswith('http')) and username:
+                    profile_url = f"https://www.tiktok.com/@{username}"
+
                 # 使用昵称作为显示名称，如果没有则使用用户名
-                customer_name = str(nickname).strip() if nickname else (str(username).strip() if username else f'用户{sequence_no}')
-                username_str = str(username).strip() if username else ''
-                
+                customer_name = nickname if nickname else (username if username else f'用户{sequence_no}')
+                username_str = username
+
                 if not profile_url or not str(profile_url).startswith('http'):
                     print(f"跳过 {customer_name}: 没有有效的URL ({profile_url})")
+                    fail_count += 1
                     continue
-                
-                actual_row_num = index + 1  # Excel中的实际行号
+
+                actual_row_num = index + start_row  # Excel中的实际行号
                 progress = f"{df_index+1}/{len(df_selected)}"
                 print(f"\n处理第 {progress} 个客户 (Excel第{actual_row_num}行): {customer_name} (@{username_str})")
                 print(f"链接: {profile_url}")
-                
+
                 # 访问个人页面并发送消息
                 if self.visit_profile_and_send_message(profile_url):
                     success_count += 1
@@ -275,11 +328,11 @@ class TikTokMessenger:
                 else:
                     fail_count += 1
                     print(f"❌ 发送失败: {customer_name} (@{username_str})")
-                
+
                 # 随机等待，避免被限制
                 if df_index < len(df_selected) - 1:  # 不是最后一个
                     self.wait_random_time(10, 20)
-                    
+
             except Exception as e:
                 fail_count += 1
                 try:
@@ -288,7 +341,7 @@ class TikTokMessenger:
                     customer_name = f'用户{index+1}'
                 print(f"处理客户 {customer_name} 时出错: {e}")
                 continue
-        
+
         print(f"\n=== 处理完成 ===")
         print(f"成功: {success_count} 个")
         print(f"失败: {fail_count} 个")
