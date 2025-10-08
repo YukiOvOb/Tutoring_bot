@@ -1,0 +1,45 @@
+# Ignore user data
+users.csv
+
+# Python caches and virtual envs
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+ENV/
+env/
+
+# Virtual environment and editor files
+.Python
+env/
+venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+
+# Optional: material file id cache
+material_file_ids.json
+
+# Secrets (if you store tokens in files)
+.env
+
