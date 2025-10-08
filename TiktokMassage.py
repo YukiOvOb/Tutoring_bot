@@ -14,7 +14,7 @@ class TikTokMessenger:
         """
         self.page = ChromiumPage()
         self.excel_file_path = str(Path(excel_file_path).expanduser().resolve())
-        self.message_text = "🌟 Join our Chinese Learning Community on Telegram!\nGet free practice worksheets, PSLE tips, and learning resources prepared by experienced tutors.\n🔗 https://t.me/Learning_Chinese_Tutor"
+        self.message_text = "🌟 Join our Chinese Learning Community on Telegram!\nGet free practice worksheets, PSLE tips, and learning resources prepared by experienced tutors.\n🔗 @Learning_Chinese_Tutor_Bot"
 
     def load_customer_data(self):
         """
