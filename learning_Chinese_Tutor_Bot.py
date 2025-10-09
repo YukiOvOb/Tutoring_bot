@@ -31,7 +31,7 @@ class BotApp:
             [["Tutoring consultation", "Free Chinese materials"]], one_time_keyboard=True, resize_keyboard=True
         )
         await update.message.reply_text(
-            "Hello! I am Midas Chinese Tutor Bot.\nIf you want a tutoring consultation, tap 'Tutoring consultation'.\nIf you want free Chinese learning materials, tap 'Free Chinese materials'.\n\nPlease choose an option by tapping a button or typing your choice:",
+            "Hello! I am Midas Chinese Tutor Bot.\nIf you want a tutoring consultation, tap 'Tutoring consultation'.\nIf you want free Chinese learning materials, tap 'Free Chinese materials'.\nIf you have any questions, feel free to contact me on Telegram or WhatsApp: 86549811.\nPlease choose an option by tapping a button or typing your choice:",
             reply_markup=keyboard,
         )
         return INTENT
